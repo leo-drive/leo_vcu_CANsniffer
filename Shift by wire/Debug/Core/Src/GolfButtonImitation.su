@@ -1,0 +1,4 @@
+../Core/Src/GolfButtonImitation.c:7:6:vHandBrakePull	8	static
+../Core/Src/GolfButtonImitation.c:16:6:vHandBrakePush	8	static
+../Core/Src/GolfButtonImitation.c:24:6:vParkBrake	8	static
+../Core/Src/GolfButtonImitation.c:37:6:vStartStop	8	static

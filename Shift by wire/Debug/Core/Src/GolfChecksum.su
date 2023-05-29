@@ -1,0 +1,5 @@
+../Core/Src/GolfChecksum.c:7:6:gen_crc_lookup_table	32	static
+../Core/Src/GolfChecksum.c:23:6:init_crc_lookup_tables	8	static
+../Core/Src/GolfChecksum.c:28:9:volkswagen_crc	336	static
+../Core/Src/GolfChecksum.c:110:10:toyota_compute_checksum	40	static
+../Core/Src/GolfChecksum.c:120:9:toyota_checksum	40	static
