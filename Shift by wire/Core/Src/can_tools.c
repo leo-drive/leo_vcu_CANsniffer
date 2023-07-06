@@ -261,7 +261,7 @@ void CAN_GetMessage(CAN_HandleTypeDef *hcan) {
 
     else if(hcan == &hcan2)
     {
-				if(myRxHeader.StdId == 0x191)// if recieved message id is ShiftCommand_ID, add this message into queue
+				if(myRxHeader.StdId == 0x343)// if recieved message id is ShiftCommand_ID, add this message into queue
 				{
 					BaseType_t pxHigherPriorityTaskWoken = pdFALSE; 
 					xQueueSendToBackFromISR( myQueue02Handle, CAN_Rx_Buffer, &pxHigherPriorityTaskWoken );

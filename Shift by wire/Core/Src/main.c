@@ -422,8 +422,6 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
-/* USER CODE END 4 */
 uint8_t bytes[8],bytesc[8];
 typedef_LTA LTAc;
 int size;
@@ -443,6 +441,9 @@ struct{
 }byte0;
 uint8_t SETME_X64 = 0,ANGLE = 0,PERCENTAGE = 0, Checksum;
 int16_t SetSteerAngle;
+int16_t SetACC;
+/* USER CODE END 4 */
+
 /* USER CODE BEGIN Header_StartDefaultTask */
 /**
   * @brief  Function implementing the defaultTask thread.
@@ -465,7 +466,7 @@ void StartDefaultTask(void const * argument)
 
 
 	  			memcpy((void *)bytesc,(const void *)bytes,(size_t)8);
-	  			byte0.set_me_X1 = 1;
+	  		/*	byte0.set_me_X1 = 1;
 	  			byte0.steer_request = 1;
 	  			byte0.cnt = (bytes[0] >> 1) & 0x3F;
 	  			SETME_X64 = 100;
@@ -475,29 +476,34 @@ void StartDefaultTask(void const * argument)
 	  			byte3.STEER_REQUEST_2 = 1;
 	  			byte3.BIT = 0;
 	  			byte3.LKA_ACTIVE = 0;
+	  		 	 	 */
 
 
-
-	  			SetSteerAngle = (int16_t)(Commandstruct.SetSteerAngle / 0.0573);
-	  			bytesc[0] = *(uint8_t*)&byte0;
+	  			//SetSteerAngle = (int16_t)(Commandstruct.SetSteerAngle / 0.0573);
+	  			SetACC = (int16_t)(Commandstruct.SetSteerAngle / 0.02);
+	  			/*bytesc[0] = *(uint8_t*)&byte0;
 	  			bytesc[1] = SetSteerAngle >> 8;
 	  			bytesc[2] = SetSteerAngle & 0x00FF;
 	  			bytesc[3] = *(uint8_t*)&byte3;
 				bytesc[4] = PERCENTAGE;
 				bytesc[5] = SETME_X64;
-				bytesc[6] = ANGLE;
+				bytesc[6] = ANGLE;*/
+	  			bytesc[0] = SetACC >> 8;
+	  			bytesc[1] = SetACC & 0x00FF;
+	  			bytesc[2] &= 0x40;
+	  			bytesc[3] |= 0x40;// permit braking
 
 	  			uint8_t temp[8];
 	  			for(int i= 0;i<8;i++)
 	  			{
-	  				temp[i] = bytesc,[7-i];
+	  				temp[i] = bytesc[7-i];
 	  			}
-	  			bytesc[7] = toyota_checksum(0x191, *(uint64_t*)temp, 8);
+	  			bytesc[7] = toyota_checksum(0x343, *(uint64_t*)temp, 8);
 	  			//Checksum = toyota_checksum(0x191, *(uint64_t*)bytesc, 8);
 	  			//bytesc[7] = Checksum;
 	  		if(Commandstruct.AutonomuosMode){
 
-	  			CAN_SendMessage(&hcan1,0x191,8, bytesc);
+	  			CAN_SendMessage(&hcan1,0x343,8, bytesc);
 
 
 	  		}
@@ -508,9 +514,10 @@ void StartDefaultTask(void const * argument)
 	  			{
 	  				temp[i] = bytes[7-i];
 	  			}
-	  			bytes[7] = toyota_checksum(0x191, *(uint64_t*)temp, 8);
+	  			bytes[7] = toyota_checksum(0x343, *(uint64_t*)temp, 8);
 
-	  			CAN_SendMessage(&hcan1,0x191,8, bytes);
+
+	  			CAN_SendMessage(&hcan1,0x343,8, bytes);
 
 	  		}
 
