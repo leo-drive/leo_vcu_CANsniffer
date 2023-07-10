@@ -19,6 +19,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "cmsis_os.h"
+#include "usb_device.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -26,11 +27,13 @@
 #include "GolfChecksum.h"
 #include "GolfShift.h"
 #include "GolfButtonImitation.h"
+
+#include "usbd_cdc_if.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-
+static uint8_t receive[64];
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -150,11 +153,11 @@ int main(void)
 
   /* Create the queue(s) */
   /* definition and creation of myQueue01 */
-  osMessageQDef(myQueue01, 8, typedef_343h);
+  osMessageQDef(myQueue01, 8, uint8_t[8]);
   myQueue01Handle = osMessageCreate(osMessageQ(myQueue01), NULL);
 
   /* definition and creation of myQueue02 */
-  osMessageQDef(myQueue02, 8, uint8_t[8]);
+  osMessageQDef(myQueue02, 8, typedef_Command);
   myQueue02Handle = osMessageCreate(osMessageQ(myQueue02), NULL);
 
   /* USER CODE BEGIN RTOS_QUEUES */
@@ -241,8 +244,9 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_ADC;
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_ADC|RCC_PERIPHCLK_USB;
   PeriphClkInit.AdcClockSelection = RCC_ADCPCLK2_DIV6;
+  PeriphClkInit.UsbClockSelection = RCC_USBCLKSOURCE_PLL_DIV3;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {
     Error_Handler();
@@ -422,6 +426,17 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+uint8_t data[64];
+float SetSteering,  setAcc;
+void CDC_ReceiveCallback(uint8_t *buf, uint32_t len) {
+	memcpy((void *)receive,(const void *)buf,(size_t)len);
+	memcpy((void *)&SetSteering,(const void *)&receive[2],(size_t)4);
+	memcpy((void *)&setAcc,(const void *)&receive[6],(size_t)4);
+
+}
+
+
+
 uint8_t bytes[8],bytesc[8];
 typedef_LTA LTAc;
 int size;
@@ -453,6 +468,8 @@ int16_t SetACC;
 /* USER CODE END Header_StartDefaultTask */
 void StartDefaultTask(void const * argument)
 {
+  /* init code for USB_DEVICE */
+  MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 5 */
   /* Infinite loop */
   for(;;)
@@ -480,7 +497,7 @@ void StartDefaultTask(void const * argument)
 
 
 	  			//SetSteerAngle = (int16_t)(Commandstruct.SetSteerAngle / 0.0573);
-	  			SetACC = (int16_t)(Commandstruct.SetSteerAngle / 0.02);
+	  			SetACC = (int16_t)(setAcc / 0.001);
 	  			/*bytesc[0] = *(uint8_t*)&byte0;
 	  			bytesc[1] = SetSteerAngle >> 8;
 	  			bytesc[2] = SetSteerAngle & 0x00FF;
@@ -564,6 +581,8 @@ void HandBrake(void const * argument)
   /* Infinite loop */
   for(;;)
   {
+	 //uint8_t usb_txbuffer[6] ="txxx" ;
+	 // CDC_Transmit_FS(usb_txbuffer, 6);
     osDelay(1);
   }
   /* USER CODE END HandBrake */
@@ -575,6 +594,7 @@ void HandBrake(void const * argument)
 * @param argument: Not used
 * @retval None
 */
+uint8_t byteD[8],bytesE[8];
 /* USER CODE END Header_StartStop */
 void StartStop(void const * argument)
 {
@@ -582,6 +602,61 @@ void StartStop(void const * argument)
   /* Infinite loop */
   for(;;)
   {
+	  xQueueReceive( myQueue01Handle, byteD, portMAX_DELAY );
+		memcpy((void *)bytesE,(const void *)byteD,(size_t)8);
+		  			byte0.set_me_X1 = 1;
+		  			byte0.steer_request = 1;
+		  			byte0.cnt = (bytes[0] >> 1) & 0x3F;
+		  			SETME_X64 = 100;
+		  			ANGLE = 0;
+		  			PERCENTAGE = 100;
+		  			byte3.SETME_X3 = 3;
+		  			byte3.STEER_REQUEST_2 = 1;
+		  			byte3.BIT = 0;
+		  			byte3.LKA_ACTIVE = 0;
+
+
+		  			SetSteering = SetSteering > 99 ? 99 : SetSteering;
+		  			SetSteering = SetSteering < -99 ? -99 : SetSteering;
+		  			SetSteerAngle = -(int16_t)(SetSteering / 0.0573);
+		  			//SetACC = (int16_t)(Commandstruct.SetSteerAngle / 0.02);
+		  			bytesE[0] = *(uint8_t*)&byte0;
+		  			bytesE[1] = SetSteerAngle >> 8;
+		  			bytesE[2] = SetSteerAngle & 0x00FF;
+		  			bytesE[3] = *(uint8_t*)&byte3;
+		  			bytesE[4] = PERCENTAGE;
+		  			bytesE[5] = SETME_X64;
+					bytesE[6] = ANGLE;
+
+
+		  			uint8_t temp[8];
+		  			for(int i= 0;i<8;i++)
+		  			{
+		  				temp[i] = bytesE[7-i];
+		  			}
+		  			bytesE[7] = toyota_checksum(0x191, *(uint64_t*)temp, 8);
+		  			//Checksum = toyota_checksum(0x191, *(uint64_t*)bytesc, 8);
+		  			//bytesc[7] = Checksum;
+		  		if(Commandstruct.AutonomuosMode){
+
+		  			CAN_SendMessage(&hcan1,0x191,8, bytesE);
+
+
+		  		}
+		  		else
+		  		{
+		  			uint8_t temp[8];
+		  			for(int i= 0;i<8;i++)
+		  			{
+		  				temp[i] = byteD[7-i];
+		  			}
+		  			bytes[7] = toyota_checksum(0x191, *(uint64_t*)temp, 8);
+
+
+		  			CAN_SendMessage(&hcan1,0x191,8, byteD);
+
+		  		}
+
     osDelay(1);
   }
   /* USER CODE END StartStop */
